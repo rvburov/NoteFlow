@@ -2,6 +2,7 @@ from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+
 from notes.models import Note
 
 User = get_user_model()
@@ -25,9 +26,17 @@ class TestNoteCreation(TestCase):
         }
 
     def test_anonymous_user_cant_create_note(self):
-        self.client.post(self.add_url, data=self.form_data)
-        notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 0)
+        # Получить количество записей до запроса
+        initial_comment_count = Note.objects.count()
+        # Выполнить запрос
+        response = self.client.post(self.add_url, data=self.form_data)
+        login_url = reverse('users:login')
+        redirect_url = f'{login_url}?next={self.add_url}'
+        self.assertRedirects(response, redirect_url)
+        # Получить количество записей после запроса
+        final_comment_count = Note.objects.count()
+        # Проверить, что количество записей не изменилось
+        self.assertEqual(initial_comment_count, final_comment_count)
 
     def test_user_can_create_note(self):
         response = self.auth_client.post(self.add_url, data=self.form_data)

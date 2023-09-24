@@ -2,6 +2,7 @@ from http import HTTPStatus
 import pytest
 from pytest_django.asserts import assertRedirects, assertFormError
 from django.urls import reverse
+
 from news.forms import WARNING, BAD_WORDS
 from news.models import Comment
 
@@ -14,11 +15,19 @@ def test_user_can_create_note(
         author
 ):
     url = reverse('news:detail', args=news_id)
+    # Получить количество комментариев до выполнения запроса
+    initial_comment_count = Comment.objects.count()
     response = author_client.post(url, data=form_data)
     expected_url = f'{url}#comments'
+    # Проверить, что произошло перенаправление на ожидаемый URL
     assertRedirects(response, expected_url)
-    assert Comment.objects.count() == 1
+    # Получить количество комментариев после выполнения запроса
+    final_comment_count = Comment.objects.count()
+    # Проверить, что количество комментариев увеличилось на 1
+    assert final_comment_count == initial_comment_count + 1
+    # Получить новый комментарий из базы данных
     new_comment = Comment.objects.get()
+    # Проверить соответствие данных нового комментария введенным данным
     assert new_comment.text == form_data['text']
     assert new_comment.author == author
     assert new_comment.news == news
