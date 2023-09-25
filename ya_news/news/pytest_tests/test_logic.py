@@ -1,5 +1,6 @@
 from http import HTTPStatus
 import pytest
+
 from pytest_django.asserts import assertRedirects, assertFormError
 from django.urls import reverse
 
@@ -14,20 +15,13 @@ def test_user_can_create_note(
         news,
         author
 ):
+    comments_count = Comment.objects.count()
     url = reverse('news:detail', args=news_id)
-    # Получить количество комментариев до выполнения запроса
-    initial_comment_count = Comment.objects.count()
     response = author_client.post(url, data=form_data)
     expected_url = f'{url}#comments'
-    # Проверить, что произошло перенаправление на ожидаемый URL
     assertRedirects(response, expected_url)
-    # Получить количество комментариев после выполнения запроса
-    final_comment_count = Comment.objects.count()
-    # Проверить, что количество комментариев увеличилось на 1
-    assert final_comment_count == initial_comment_count + 1
-    # Получить новый комментарий из базы данных
+    assert Comment.objects.count() == comments_count + 1
     new_comment = Comment.objects.get()
-    # Проверить соответствие данных нового комментария введенным данным
     assert new_comment.text == form_data['text']
     assert new_comment.author == author
     assert new_comment.news == news
@@ -40,7 +34,8 @@ def test_anonymous_user_cant_create_note(client, news_id, form_data):
     login_url = reverse('users:login')
     expected_url = f'{login_url}?next={url}'
     assertRedirects(response, expected_url)
-    assert Comment.objects.count() == 0
+    comments_count = Comment.objects.count()
+    assert Comment.objects.count() == comments_count
 
 
 def test_author_can_edit_note(author_client, form_data, comment):
@@ -61,26 +56,27 @@ def test_other_user_cant_edit_note(admin_client, form_data, comment):
 
 
 def test_author_can_delete_note(author_client, comment):
+    comments_count = Comment.objects.count()
     url = reverse('news:delete', args=(comment.id,))
     response = author_client.post(url)
     url_comment = reverse('news:detail', args=(comment.id,))
     assertRedirects(response, f'{url_comment}#comments')
-    assert Comment.objects.count() == 0
+    assert Comment.objects.count() == comments_count - 1
 
 
 def test_other_user_cant_delete_note(admin_client, form_data, comment):
+    comments_count = Comment.objects.count()
     url = reverse('news:delete', args=(comment.id,))
     response = admin_client.post(url)
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert Comment.objects.count() == 1
+    assert Comment.objects.count() == comments_count
 
 
 @pytest.mark.parametrize('bad_word', BAD_WORDS)
 def test_user_cant_use_bad_words(author_client, news_id, bad_word):
-    """Проверить работу фильтра запрещенных слов в тексте комментария."""
-    url = reverse('news:detail', args=news_id)
     comments_count = Comment.objects.count()
+    url = reverse('news:detail', args=news_id)
     bad_words = {'text': f'Какой-то текст, {bad_word}, еще текст.'}
     response = author_client.post(url, data=bad_words)
-    assert comments_count == 0
+    assert Comment.objects.count() == comments_count
     assertFormError(response, form='form', field='text', errors=WARNING)

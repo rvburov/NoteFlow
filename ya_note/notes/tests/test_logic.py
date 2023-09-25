@@ -1,4 +1,5 @@
 from http import HTTPStatus
+
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -26,23 +27,22 @@ class TestNoteCreation(TestCase):
         }
 
     def test_anonymous_user_cant_create_note(self):
-        # Получить количество записей до запроса
-        initial_comment_count = Note.objects.count()
-        # Выполнить запрос
+        Note.objects.all().delete()
         response = self.client.post(self.add_url, data=self.form_data)
         login_url = reverse('users:login')
         redirect_url = f'{login_url}?next={self.add_url}'
         self.assertRedirects(response, redirect_url)
-        # Получить количество записей после запроса
-        final_comment_count = Note.objects.count()
-        # Проверить, что количество записей не изменилось
-        self.assertEqual(initial_comment_count, final_comment_count)
+        expected_count = 0
+        notes_count = Note.objects.count()
+        self.assertEqual(notes_count, expected_count)
 
     def test_user_can_create_note(self):
+        Note.objects.all().delete()
         response = self.auth_client.post(self.add_url, data=self.form_data)
         self.assertRedirects(response, self.success_url)
+        expected_count = 1
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        self.assertEqual(notes_count, expected_count)
         notes = Note.objects.get()
         self.assertEqual(notes.title, self.form_data['title'])
         self.assertEqual(notes.text, self.form_data['text'])
@@ -73,14 +73,16 @@ class TestNoteEditDelete(TestCase):
         response = self.author_client.post(self.delete_url,
                                            data=self.form_data)
         self.assertRedirects(response, reverse('notes:success'))
+        expected_count = 0
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 0)
+        self.assertEqual(notes_count, expected_count)
 
     def test_user_cant_delete_note_of_another_user(self):
         response = self.reader_client.delete(self.delete_url)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
+        expected_count = 1
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        self.assertEqual(notes_count, expected_count)
 
     def test_author_can_edit_note(self):
         self.author_client.post(self.edit_url, data=self.form_data)
