@@ -153,3 +153,4 @@
 
 ---
 
+![Note Screenshot](ya_note/static_dev/img/Note-Screenshot.png)
