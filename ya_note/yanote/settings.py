@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-yipnj$#j!ajarq%k55z4kuf3x79)91h0h42o9!1ho(z=!%mt=#'
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -85,5 +85,5 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_URL = reverse_lazy('users:login')
-LOGIN_REDIRECT_URL = reverse_lazy('notes:home')
+LOGIN_URL = '/auth/login/'  # Убедитесь, что маршрут существует
+LOGIN_REDIRECT_URL = '/notes/'  # Укажите существующий маршрут
